@@ -216,7 +216,7 @@ def display_visuals(filtered_data, state_coordinates):
 
     # Mise à jour du layout de la carte pour ajuster la taille
     fig.update_layout(
-        title='Total Sales by State<br>(Hover for details)',
+        title='Total Sales by State<br>',
         geo=dict(
             scope='usa',
             landcolor="lightgreen",
