@@ -1,7 +1,6 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.express as px
+import plotly.graph_objects as go
 
 def display_visuals(filtered_data, state_coordinates):
     # Vérifier si les données sont filtrées
@@ -110,8 +109,8 @@ def display_visuals(filtered_data, state_coordinates):
                             x='age', 
                             title='Répartition de l\'âge des clients',
                             labels={'age': 'Âge'},
-                            nbins=30,  # Nombre de bins
-                            color_discrete_sequence=['lightblue'])  # Couleur de l'histogramme
+                            nbins=30,
+                            color_discrete_sequence=['lightblue'])
 
         fig_age.update_layout(title_font_size=20, 
                             xaxis_title='Âge',
@@ -126,6 +125,10 @@ def display_visuals(filtered_data, state_coordinates):
         gender_counts = filtered_data['Gender'].value_counts().reset_index()
         gender_counts.columns = ['Gender', 'Count']
 
+        # Calculer le pourcentage sur la base des comptes
+        total_count = gender_counts['Count'].sum()  # Total des individus (hommes et femmes)
+        gender_counts['Percentage'] = (gender_counts['Count'] / total_count) * 100  # Calcul du pourcentage
+
         # Créer le diagramme en barres
         fig_gender = px.bar(gender_counts, 
                             x='Gender', 
@@ -133,25 +136,24 @@ def display_visuals(filtered_data, state_coordinates):
                             title='Nombre d\'hommes et de femmes',
                             labels={'Gender': 'Genre', 'Count': 'Nombre'},
                             color='Gender', 
-                            color_discrete_sequence=['blue', 'pink'])  # Couleurs pour hommes et femmes
-
-        # Calculer le pourcentage sur la base des comptes
-        total_count = gender_counts['Count'].sum()
-        gender_counts['Percentage'] = (gender_counts['Count'] / total_count) * 100
+                            color_discrete_sequence=['blue', 'pink'])
 
         # Mettre à jour les traces pour afficher le nombre et le pourcentage
         fig_gender.update_traces(texttemplate='%{y} (<br>%{customdata:.1f}%)',
-                                customdata=gender_counts['Percentage'],
+                                customdata=gender_counts['Percentage'],  # Afficher le pourcentage
                                 textposition='outside')
 
         # Mettre à jour la mise en page
-        fig_gender.update_layout(title_font_size=20, 
-                                xaxis_title='Genre', 
-                                yaxis_title='Nombre',
-                                margin=dict(l=20, r=20, t=50, b=20))
+        fig_gender.update_layout(
+            title_font_size=20, 
+            xaxis_title='Genre', 
+            yaxis_title='Nombre',
+            margin=dict(l=20, r=20, t=50, b=20)
+        )
 
         # Afficher le diagramme en barres
         st.plotly_chart(fig_gender)
+
 
 
 
@@ -182,27 +184,53 @@ def display_visuals(filtered_data, state_coordinates):
     st.plotly_chart(fig_monthly_sales)
 
 
-     # Ajouter les colonnes de latitude et longitude
+
+    # Assign a unique color to each state using a categorical color scale
+    color_map = {state: i for i, state in enumerate(filtered_data['State'].unique())}
+
+    # Add latitude and longitude columns
     filtered_data['Latitude'] = filtered_data['State'].map(lambda x: state_coordinates[x][0] if x in state_coordinates else None)
     filtered_data['Longitude'] = filtered_data['State'].map(lambda x: state_coordinates[x][1] if x in state_coordinates else None)
 
-    # Calculer le total des ventes par État
-    sales_by_state = (filtered_data
-                      .groupby('State')
-                      .agg({'total': 'sum', 'Latitude': 'first', 'Longitude': 'first'})
-                      .reset_index())
-    
-    fig = px.scatter_geo(sales_by_state,
-                         lat='Latitude',
-                         lon='Longitude',
-                         size='total',
-                         hover_name='State',
-                         title='Total des ventes par État',
-                         size_max=20,
-                         template='plotly')
+    # Create a text column for hover information
+    filtered_data['text'] = filtered_data['State'] + '<br>Total Sales: ' + filtered_data['total'].astype(str)
 
-    # Mettre à jour la mise en page
-    fig.update_layout(title_font_size=20)
+    # Créer la carte avec Plotly
+    fig = go.Figure(data=go.Scattergeo(
+        lon=filtered_data['Longitude'],
+        lat=filtered_data['Latitude'],
+        text=filtered_data['text'],
+        mode='markers',
+        marker=dict(
+            size=20,  # Ajustez la taille des marqueurs
+            color=[color_map[state] for state in filtered_data['State']],  # Assigner une couleur unique
+            colorscale='Viridis',  # Palette de couleurs Viridis
+            showscale=True,  # Afficher l'échelle des couleurs
+            opacity=0.8,
+            line=dict(
+                width=2.5,
+                color=[color_map[state] for state in filtered_data['State']]  # Lignes de couleur unique par état
+            )
+        )
+    ))
 
-    # Afficher la carte
+    # Mise à jour du layout de la carte pour ajuster la taille
+    fig.update_layout(
+        title='Total Sales by State<br>(Hover for details)',
+        geo=dict(
+            scope='usa',
+            landcolor="lightgreen",
+            showland=True,
+            lakecolor="lightblue",
+            subunitcolor="white",
+            countrycolor="black",
+            coastlinecolor="blue",
+            bgcolor="rgba(0,0,0,0)",  # Fond transparent
+            projection_type="albers usa"  # Projection pour afficher mieux la carte des USA
+        ),
+        width=900,  # Largeur de la figure
+        height=600  # Hauteur de la figure
+    )
+
+    # Afficher la carte dans Streamlit
     st.plotly_chart(fig)
