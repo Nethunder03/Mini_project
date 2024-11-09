@@ -9,7 +9,7 @@ def apply_filters(data):
 
     with col1:
         st.header("Date de début")
-        start_date = st.date_input("Date de début", min_value=min_date.date(), max_value=max_date.date(),  value=min_date.date())
+        start_date = st.date_input("Date de début", min_value=min_date.date(), max_value=max_date.date())
 
 
     with col2:
